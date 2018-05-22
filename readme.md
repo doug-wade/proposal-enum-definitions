@@ -26,16 +26,18 @@
             // Specification can define better semantics for deriving
             // and storing keys and values (internal slot)
             let keys = Object.keys(DaysOfWeek);
-            let values = Object.values(DaysOfWeek);
             let index = 0;
             while (index < keys.length) {
-              yield [keys[index], values[index]];
+              yield keys[index];
               index++;
             }
           }
         },
         values: function() {
           return Object.keys(DaysOfWeek)
+        },
+        memberOf: function(elem) {
+          return Object.values(this).includes(elem);
         },
         SUNDAY: Symbol('SUNDAY'),
         MONDAY: Symbol('MONDAY'),
