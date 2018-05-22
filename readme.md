@@ -19,13 +19,13 @@
         [Symbol.enumSize]: {
           // Specification can define better semantics for deriving
           // and storing the size of the enum object (internal slot)
-          value: 7
+          value: values.length
         },
         [Symbol.iterator]: {
           * value() {
             // Specification can define better semantics for deriving
             // and storing keys and values (internal slot)
-            let keys = Object.keys(DaysOfWeek);
+            let keys = Object.keys(values);
             let index = 0;
             while (index < keys.length) {
               yield keys[index];
@@ -33,11 +33,39 @@
             }
           }
         },
-        values: function() {
-          return Object.keys(DaysOfWeek)
+        keys: {
+          get: function() {
+            return function () { return Object.keys(this); };
+          },
         },
-        memberOf: function(elem) {
-          return Object.values(this).includes(elem);
+        values: {
+          get: function() {
+            return function () { return Object.values(this); };
+          },
+        },
+        entries: {
+          get: function() {
+            return function () { return Object.entries(this); };
+          },
+        },
+        has: {
+          get: function() {
+            return function (elem) { return Object.values(this).includes(elem); };
+          },
+        },
+        size: {
+          get: function() {
+            return function() { return this[Symbol.enumSize]; };
+          }
+        },
+        forEach: {
+          get: function() {
+            return function(callback) {
+              for (const member in Object.keys(this)) {
+                callback(member, this[member], this);
+              }
+            }
+          }
         },
         SUNDAY: Symbol('SUNDAY'),
         MONDAY: Symbol('MONDAY'),
@@ -48,8 +76,61 @@
         SATURDAY: Symbol('SATURDAY'),
       })
     );
+    ```
 
+    Which means that enums are iterable:
+
+    ```js
     for (let day of DaysOfWeek) { console.log(day.toString()) }
+
+    /*
+      SUNDAY
+      MONDAY
+      TUESDAY
+      WEDNESDAY
+      THURSDAY
+      FRIDAY
+      SATURDAY    
+     */
+    ```
+
+    And have many familiar methods, similar to maps:
+
+    ```js
+    DaysOfWeek.size();
+
+    // 7
+
+    DaysOfWeek.keys();
+
+    // [ SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY ]
+
+    DaysOfWeek.values();
+
+    // [ Symbol(SUNDAY), Symbol(MONDAY), Symbol(TUESDAY), Symbol(WEDNESDAY), Symbol(THURSDAY), Symbol(FRIDAY), Symbol(SATURDAY) ]
+
+    DaysOfWeek.entries();
+
+    /*
+      [
+        [ SUNDAY, Symbol(SUNDAY) ],
+        [ MONDAY, Symbol(MONDAY) ],
+        [ TUESDAY, Symbol(TUESDAY) ],
+        [ WEDNESDAY, Symbol(WEDNESDAY) ],
+        [ THURSDAY, Symbol(THURSDAY) ],
+        [ FRIDAY, Symbol(FRIDAY) ],
+        [ SATURDAY, Symbol(SATURDAY) ]
+      ]
+    */
+
+    const day = DaysOfWeek.SUNDAY;
+    DaysOfWeek.has(day);
+    DaysOfWeek.has('SUNDAY')
+
+    // true
+    // false
+
+    DaysOfWeek.forEach(day => console.log(day.toString()));
 
     /*
       SUNDAY
@@ -69,7 +150,7 @@
   ```js
   enum MetasyntacticVariables {
     FOO,
-    BAR = _AssignmentExpression_,
+    BAR = 'BAR',
     BAZ,
   }
   ```
@@ -80,7 +161,7 @@
   const MetasyntacticVariables = Object.freeze(
     Object.create(null, {
       FOO: Symbol('FOO'),
-      BAR: _AssignmentExpression_,
+      BAR: 'BAR',
       BAZ: Symbol('BAZ'),
       // Other methods as defined above.
     })
@@ -90,9 +171,9 @@
   _EnumDeclaration_ (with _BindingIdentifier_) or _EnumExpression_ example:
 
   ```js
-  enum Things {
+  enum MetasyntacticVariables {
     FOO,
-    BAR = _AssignmentExpression_,
+    BAR = 'BAR',
     BAZ,
   };
   ```
@@ -100,78 +181,70 @@
   Is approximately equivalent to:
 
   ```js
-  const DaysOfWeek = Object.freeze(
+  const MetasyntacticVariables = Object.freeze(
     Object.create(null, {
       FOO: Symbol('FOO'),
-      BAR: _AssignmentExpression_,
+      BAR: 'BAR',
       BAZ: Symbol('BAZ'),
       // Other methods as defined above
     })
   );
   ```
 
-  Of course, this means that the value of an `enum` entry can be whatever you want it to be:
+  This means that the value of an `enum` entry can be whatever you want it to be:
 
   ```js
   enum ManyTypedValues {
     STRING = 'string',
     NUMBER = 42,
-    SYMBOL,
+    SYMBOL = Symbol('Symbol'),
     ARRAY = ['array', 'of', 'values'],
     OBJECT = { value: 42 },
     FUNCTION = () => 'function'
   }
   ```
 
-
-- _EnumDeclaration_ may have _ComputedPropertyName_ as _EnumEntryName_:
-
-  ```js
-  enum MetasyntacticVariables {
-    FOO,
-    ["BAR"],
-    BAZ,
-  }
-  ```
-
-  Is equivalent to:
+  This also means that values of an `enum` entry can carry data that is relevant to an entry:
 
   ```js
-  const DaysOfWeek = Object.freeze(
-    Object.create(null, {
-      FOO: Symbol('FOO'),
-      BAR: 'BAR'.toString(),
-      BAZ: Symbol('BAZ'),
-      // Other methods as defined above
-    })
-  );
-  ```
-
-  _EnumDeclaration_ (with _BindingIdentifier_) or _EnumExpression_ example:
-
-  ```js
-  enum Things {
-    FOO,
-    [Symbol(...)],
-    BAZ,
+  enum Colors {
+    RED: { red: 255, blue: 0, green: 0 },
+    BLUE: { red: 0, blue: 255, green: 0 },
+    GREEN: { red: 0, blue: 0, green: 255 }
   };
   ```
 
-  Is approximately equivalent to:
+  Or even behavior:
 
   ```js
-  const DaysOfWeek = Object.freeze(
-    Object.create(null, {
-      FOO: Symbol('FOO'),
-      [Symbol(...)]: Symbol(Symbol(...).toString()),
-      BAZ: Symbol('BAZ'),
-      // Other methods as defined above
-    })
-  );
+  const toCSS = () => ({ color: `rgb(${this.red}, ${this.green}, ${this.blue})` });
+  enum Colors {
+    RED: { red: 255, blue: 0, green: 0, toCSS },
+    BLUE: { red: 0, blue: 255, green: 0, toCSS },
+    GREEN: { red: 0, blue: 0, green: 255, toCSS }
+  };
+  export default () => <div style={Colors.RED.toCSS()}>I have color!</div>;
   ```
 
+- _EnumDeclaration_ does not require an identifier:
+  - This means you can bind an enum to a variable
+    ```js
+    const MetasyntacticVariables = enum {
+      FOO,
+      BAR,
+      BAZ
+    };
+    ```
+
+  - This also means you can return them from a function
+    ```js
+    const MetasyntacticVariables = (() => {
+      return enum { FOO, BAR, BAZ };
+    })();
+    ```
+
 - _EnumDeclaration_ may not have duplicate _EnumEntryName_:
-  - These throw exceptions:
+  - This throws an exception:
     ```js
     enum Foos {
       FOO,
@@ -179,12 +252,4 @@
     }
     ```
 
-    ```js
-    enum Bars {
-      FOO,
-      ["BAR"],
-      BAR,
-    }
-    ```
-
-\* Approximately means that it doesn't fully represent all of the semantics.
+\* Approximately means that it may not fully represent all of the semantics.
