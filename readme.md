@@ -1,5 +1,5 @@
 - `enum` is a new _LexicalDeclaration_ binding form, similar to `let` or `const`.
-- `typeof enum` is `object`; similar to Array, it's just a special Object (more below)
+- `typeof enum` is `enum`; unlike Array, there's no other way to determine its enum-ness, as there is not a global Enum object, and instantiating enums is not inexpensive.
 
 - _EnumDeclaration_ or _EnumExpression_ with a _BindingIdentifier_ creates:
   - A proto-less, frozen object;
@@ -19,7 +19,7 @@
         [Symbol.enumSize]: {
           // Specification can define better semantics for deriving
           // and storing the size of the enum object (internal slot)
-          value: values.length
+          value: 7
         },
         [Symbol.iterator]: {
           * value() {
@@ -225,6 +225,25 @@
   };
   export default () => <div style={Colors.RED.toCSS()}>I have color!</div>;
   ```
+
+  Or even be nested:
+
+  ```js
+  const toCSS = () => ({ color: `rgb(${this.red}, ${this.green}, ${this.blue})` });
+  enum COLORS {
+    RED = enum {
+      LIGHT = { red: 125, blue: 0, green: 0, toCSS },
+      DARK = { red: 255, blue: 0, green: 0, toCSS }
+    },
+    BLUE = enum {
+      LIGHT = { red: 0, blue: 125, green: 0, toCSS },
+      DARK = { red: 0, blue: 255, green: 0, toCSS }
+    },
+    GREEN = enum {
+      LIGHT = { red: 0, blue: 0, green: 125, toCSS },
+      DARK = { red: 0, blue: 0, green: 255, toCSS }
+    }
+  }
 
 - _EnumDeclaration_ does not require an identifier:
   - This means you can bind an enum to a variable
